@@ -1,0 +1,14 @@
+{
+  "name": "Tracker de Séries",
+  "short_name": "Séries",
+  "description": "Suivi des séries d'exercices, semaine par semaine et matière par matière.",
+  "lang": "fr",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#e9e7e2",
+  "theme_color": "#e9e7e2",
+  "icons": [
+    { "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }
+  ]
+}
