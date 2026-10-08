@@ -44,6 +44,8 @@
     --s3: #5a9c69;      /* fait : vert */
     --today: #ecdfb9;
     --now-line: #d27a5f; /* trait sous la semaine en cours : rouge orangé adouci */
+    --off: #dbe6d8;      /* semaine sautée : vert sauge pâle… */
+    --dot: #b4c3b0;      /* …semé d'une trame de points discrète */
   }
   /* Thème sombre : suit le système en mode « auto », sauf si un thème est
      forcé via data-theme sur <html> (choisi dans l'en-tête). */
@@ -52,14 +54,14 @@
       --bg: #1b1d21; --card: #24272c; --fg: #dfe1e4; --muted: #8d9199;
       --line: #363a41; --hover: #2c3036; --accent: #6f9bd0;
       --s0: #31353b; --s1: #4a77a6; --s2: #3f6449; --s3: #6aad78;
-      --today: #3d3626; --now-line: #c98468;
+      --today: #3d3626; --now-line: #c98468; --off: #2b362f; --dot: #46554b;
     }
   }
   :root[data-theme="dark"] {
     --bg: #1b1d21; --card: #24272c; --fg: #dfe1e4; --muted: #8d9199;
     --line: #363a41; --hover: #2c3036; --accent: #6f9bd0;
     --s0: #31353b; --s1: #4a77a6; --s2: #3f6449; --s3: #6aad78;
-    --today: #3d3626; --now-line: #c98468;
+    --today: #3d3626; --now-line: #c98468; --off: #2b362f; --dot: #46554b;
   }
   main { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; }
   select option { background: var(--bg); color: var(--fg); }
@@ -95,6 +97,17 @@
   td[data-s="1"] { background: var(--s1); }
   td[data-s="2"] { background: var(--s2); }
   td[data-s="3"] { background: var(--s3); }
+  /* Ce qui n'a pas lieu d'être fait (semaine de vacances, série sautée pour
+     un jour férié) : un vert sauge pâle tramé de petits points. Plus calme
+     que des rayures, et on le distingue d'un coup d'œil des aplats d'état. */
+  td.off, td[data-s="skip"] {
+    /* « space » ne pose que des motifs entiers et répartit le reste en
+       interligne égal : aucun point n'est jamais coupé au bord, quelle que
+       soit la taille de la case. */
+    background: radial-gradient(circle, var(--dot) 0 1.1px, transparent 1.6px) center / 7px 7px space, var(--off);
+  }
+  td.off { height: 26px; }
+  tr.break td.week { font-style: italic; }
 
   .bar { height: 3px; background: var(--line); border-radius: 2px; margin-top: 4px; overflow: hidden; }
   .bar > i { display: block; height: 100%; background: var(--s3); }
@@ -111,6 +124,9 @@
   #settings label input { margin-left: 6px; }
   #subjects div { display: flex; gap: 6px; margin: 4px 0; }
   #subjects input { flex: 1; }
+  #holidays div { display: flex; gap: 6px; margin: 4px 0; align-items: center; flex-wrap: wrap; }
+  #holidays input[type="text"] { flex: 1; min-width: 8em; }
+  .hint { font-size: 12px; color: var(--muted); margin: 2px 0 4px; }
   .row { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
   .danger { color: #d44c47; }
 
@@ -144,6 +160,7 @@
   <span style="--c: var(--s1)">en cours</span>
   <span style="--c: var(--s2)">à corriger</span>
   <span style="--c: var(--s3)">fait</span>
+  <span style="--c: radial-gradient(circle, var(--dot) 0 0.8px, transparent 1.2px) center / 4px 4px space, var(--off)">vacances</span>
 </div>
 </main>
 
@@ -153,6 +170,7 @@
     <li><b>Clic</b> sur une case : état suivant (à venir → en cours → à corriger → fait). <b>Clic droit</b> : état précédent.</li>
     <li><b>⚙</b> : renommer le semestre, ajouter ou retirer des matières, changer le nombre de semaines.</li>
     <li>Renseigner la <b>date de début</b> (lundi de la semaine 1) surligne la semaine en cours.</li>
+    <li><b>Vacances et jours fériés</b> (dans ⚙) : une semaine entièrement couverte passe en « vacances » et sort du décompte. <b>Maj + clic</b> sur une case : série sautée pour un jour férié.</li>
     <li><b>+ nouveau semestre</b> reprend les matières du semestre affiché ; les anciens restent dans le menu déroulant.</li>
     <li>Tout reste <b>dans ce navigateur</b>, sur cet appareil. Pensez à <b>Exporter</b> de temps en temps : c'est votre sauvegarde, et c'est ainsi qu'on passe d'un appareil à l'autre (<b>Importer</b>).</li>
     <li>Pour l'avoir dans sa propre fenêtre : menu du navigateur → <i>Installer l'application</i> (Chrome, Edge, Brave) ou <i>Partager → Sur l'écran d'accueil</i> (iPhone).</li>
@@ -163,6 +181,10 @@
   <label>Nom du semestre <input id="name"></label>
   <label>Début (lundi de la semaine 1) <input id="start" type="date"></label>
   <label>Nombre de semaines <input id="weeks" type="number" min="1" max="30" style="width:5em"></label>
+  <div style="font-size:13px;margin-top:8px">Vacances et jours fériés</div>
+  <div class="hint">Une semaine entièrement couverte (lundi → vendredi) est sautée : toute sa ligne passe en « vacances ». Pour un jour férié isolé, sautez la seule série concernée par <b>Maj + clic</b>.</div>
+  <div id="holidays"></div>
+  <button id="addHoliday">+ période</button>
   <div style="font-size:13px;margin-top:8px">Matières</div>
   <div id="subjects"></div>
   <button id="addSubject">+ matière</button>
@@ -181,12 +203,14 @@
 const KEY = "tracker-series-v1";
 const STATES = 4; // à venir, en cours, à corriger, fait
 const DONE = 3;
+const SKIP = "skip"; // série sautée à la main (jour férié) : hors du décompte
 
 /** Crée un semestre vide ; les matières reçoivent un identifiant stable
     pour que les renommer ne perde pas les cases déjà cochées. */
 function makeSemester(name, subjectNames) {
   return {
     name, start: "", weeks: 14,
+    holidays: [], // périodes { label, from, to } au format "AAAA-MM-JJ"
     subjects: subjectNames.map(n => ({ id: uid(), name: n })),
     cells: {} // clé "idMatière:semaine" -> état (absent = 0)
   };
@@ -199,7 +223,7 @@ function uid() { return Math.random().toString(36).slice(2, 9); }
 function load() {
   try {
     const raw = localStorage.getItem(KEY);
-    if (raw) return dropRetiredStates(JSON.parse(raw));
+    if (raw) return normalize(JSON.parse(raw));
   } catch (e) { /* on repart d'un état neuf */ }
   const id = uid();
   return {
@@ -210,9 +234,12 @@ function load() {
 
 /** Ramène à « à venir » toute case dont l'état n'existe pas (ancienne
     version, fichier importé retouché) plutôt que d'afficher une couleur vide. */
-function dropRetiredStates(data) {
-  for (const s of Object.values(data.semesters))
-    for (const k of Object.keys(s.cells)) if (s.cells[k] >= STATES) delete s.cells[k];
+function normalize(data) {
+  for (const s of Object.values(data.semesters)) {
+    if (!Array.isArray(s.holidays)) s.holidays = []; // données d'avant les vacances
+    for (const [k, v] of Object.entries(s.cells))
+      if (v !== SKIP && !(Number.isInteger(v) && v > 0 && v < STATES)) delete s.cells[k];
+  }
   return data;
 }
 
@@ -224,10 +251,37 @@ let db = load();
 const sem = () => db.semesters[db.current];
 const $ = id => document.getElementById(id);
 
-/** Semaine en cours d'après la date de début, ou null si elle n'est pas renseignée. */
+/* ---------- Calendrier ----------
+   On ne manipule que des dates locales à minuit, construites champ par
+   champ : new Date("AAAA-MM-JJ") serait lu en UTC et pourrait tomber la
+   veille, et un simple « + 86400000 » se tromperait au changement d'heure. */
+function parseDay(str) { const [y, m, d] = str.split("-").map(Number); return new Date(y, m - 1, d); }
+function addDays(date, n) { return new Date(date.getFullYear(), date.getMonth(), date.getDate() + n); }
+
+/** Période de vacances contenant ce jour, ou undefined. Bornes incluses,
+    et tolère un début saisi après la fin. */
+function holidayAt(s, day) {
+  return s.holidays.find(h => {
+    if (!h.from || !h.to) return false;
+    const a = parseDay(h.from), b = parseDay(h.to);
+    return day >= (a < b ? a : b) && day <= (a < b ? b : a);
+  });
+}
+
+/** La semaine w (à partir de 1) est sautée si chacun de ses cinq jours ouvrés
+    est en vacances : un férié isolé ne supprime pas les séries des autres jours. */
+function weekOff(s, w) {
+  if (!s.start) return false;
+  const monday = addDays(parseDay(s.start), 7 * (w - 1));
+  for (let i = 0; i < 5; i++) if (!holidayAt(s, addDays(monday, i))) return false;
+  return true;
+}
+
+/** Numéro de la semaine en cours (à partir de 1), ou null sans date de début. */
 function currentWeek(s) {
   if (!s.start) return null;
-  const days = (Date.now() - new Date(s.start + "T00:00").getTime()) / 86400000;
+  const t = new Date();
+  const days = Math.round((new Date(t.getFullYear(), t.getMonth(), t.getDate()) - parseDay(s.start)) / 86400000);
   return Math.floor(days / 7) + 1;
 }
 
@@ -247,22 +301,33 @@ function renderSemesterPicker() {
 function renderGrid() {
   const s = sem();
   const now = currentWeek(s);
+  const off = new Set();
+  for (let w = 1; w <= s.weeks; w++) if (weekOff(s, w)) off.add(w);
   let total = 0, done = 0;
 
   let html = "<tr><th class='week'></th>";
   for (const sub of s.subjects) {
-    let n = 0;
-    for (let w = 1; w <= s.weeks; w++) if (s.cells[sub.id + ":" + w] === DONE) n++;
-    total += s.weeks; done += n;
-    html += `<th>${esc(sub.name)}<div class="bar"><i style="width:${100 * n / s.weeks}%"></i></div></th>`;
+    // Une série sautée (vacances ou jour férié) n'est ni due ni manquée :
+    // elle sort du décompte.
+    let n = 0, due = 0;
+    for (let w = 1; w <= s.weeks; w++) {
+      const v = s.cells[sub.id + ":" + w];
+      if (off.has(w) || v === SKIP) continue;
+      due++; if (v === DONE) n++;
+    }
+    total += due; done += n;
+    html += `<th>${esc(sub.name)}<div class="bar"><i style="width:${due ? 100 * n / due : 100}%"></i></div></th>`;
   }
   html += "</tr>";
 
   for (let w = 1; w <= s.weeks; w++) {
-    html += `<tr class="${w === now ? "now" : ""}"><td class="week">${w}</td>`;
+    // Une semaine de vacances garde son numéro et sa place ; ses cases, non
+    // cliquables, ne portent aucun état (celui déjà saisi est conservé).
+    html += `<tr class="${w === now ? "now" : ""} ${off.has(w) ? "break" : ""}"><td class="week">${w}</td>`;
     for (const sub of s.subjects) {
       const k = sub.id + ":" + w;
-      html += `<td class="cell" data-k="${k}" data-s="${s.cells[k] || 0}"></td>`;
+      html += off.has(w) ? `<td class="off"></td>`
+                         : `<td class="cell" data-k="${k}" data-s="${s.cells[k] || 0}"></td>`;
     }
     html += "</tr>";
     if (w === now) html += `<tr class="nowline"><td colspan="${s.subjects.length + 1}"></td></tr>`;
@@ -274,13 +339,23 @@ function renderGrid() {
 /** Fait tourner l'état d'une case dans un sens ou dans l'autre. */
 function step(k, dir) {
   const s = sem();
+  // Une case sautée revient d'abord à « à venir », quel que soit le sens.
+  if (s.cells[k] === SKIP) { delete s.cells[k]; save(); renderGrid(); return; }
   const next = ((s.cells[k] || 0) + dir + STATES) % STATES;
   if (next) s.cells[k] = next; else delete s.cells[k];
   save(); renderGrid();
 }
 
+/** Maj + clic : marque la série comme sautée (jour férié), ou l'inverse. */
+function toggleSkip(k) {
+  const s = sem();
+  if (s.cells[k] === SKIP) delete s.cells[k]; else s.cells[k] = SKIP;
+  save(); renderGrid();
+}
+
 $("grid").addEventListener("click", e => {
-  const td = e.target.closest("td.cell"); if (td) step(td.dataset.k, +1);
+  const td = e.target.closest("td.cell"); if (!td) return;
+  if (e.shiftKey) toggleSkip(td.dataset.k); else step(td.dataset.k, +1);
 });
 $("grid").addEventListener("contextmenu", e => {
   const td = e.target.closest("td.cell"); if (!td) return;
@@ -301,11 +376,18 @@ function renderSettings() {
   $("subjects").innerHTML = s.subjects.map((sub, i) =>
     `<div><input data-i="${i}" value="${esc(sub.name)}"><button data-del="${i}" title="Retirer">✕</button></div>`
   ).join("");
+  $("holidays").innerHTML = (s.start ? "" : "<div class='hint'>Renseignez d'abord la date de début.</div>")
+    + s.holidays.map((h, i) =>
+      `<div><input type="text" data-h="${i}" data-f="label" placeholder="Vacances de Pâques" value="${esc(h.label)}">`
+      + `<input type="date" data-h="${i}" data-f="from" value="${h.from}"> → `
+      + `<input type="date" data-h="${i}" data-f="to" value="${h.to}">`
+      + `<button data-hdel="${i}" title="Retirer">✕</button></div>`
+    ).join("");
   resetDeleteButton();
 }
 
 $("name").addEventListener("input", e => { sem().name = e.target.value; save(); renderSemesterPicker(); });
-$("start").addEventListener("change", e => { sem().start = e.target.value; save(); renderGrid(); });
+$("start").addEventListener("change", e => { sem().start = e.target.value; save(); render(); });
 $("weeks").addEventListener("change", e => {
   const n = Math.max(1, Math.min(30, parseInt(e.target.value, 10) || 14));
   sem().weeks = n; save(); render();
@@ -321,6 +403,17 @@ $("subjects").addEventListener("click", e => {
   // On nettoie ses cases pour ne pas laisser de données orphelines.
   for (const k of Object.keys(s.cells)) if (k.startsWith(gone.id + ":")) delete s.cells[k];
   save(); render();
+});
+$("holidays").addEventListener("input", e => {
+  const { h, f } = e.target.dataset; if (h === undefined) return;
+  sem().holidays[h][f] = e.target.value; save(); renderGrid();
+});
+$("holidays").addEventListener("click", e => {
+  const i = e.target.dataset.hdel; if (i === undefined) return;
+  sem().holidays.splice(i, 1); save(); render();
+});
+$("addHoliday").addEventListener("click", () => {
+  sem().holidays.push({ label: "", from: "", to: "" }); save(); render();
 });
 $("addSubject").addEventListener("click", () => {
   sem().subjects.push({ id: uid(), name: "Nouvelle matière" }); save(); render();
@@ -362,7 +455,7 @@ $("importFile").addEventListener("change", async e => {
   try {
     const data = JSON.parse(await file.text());
     if (!data.semesters || !data.semesters[data.current]) throw new Error("format");
-    db = dropRetiredStates(data); save(); render();
+    db = normalize(data); save(); render();
   } catch (err) { alert("Fichier illisible : ce n'est pas un export de cette page."); }
   e.target.value = "";
 });
