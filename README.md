@@ -10,7 +10,7 @@ partout où il y a des séries.
 | en cours | bleu |
 | à corriger | vert clair |
 | fait | vert |
-| vacances | vert sauge pâle tramé de points |
+| vacances | gris, ou vert sauge pointillé (au choix dans ⚙) |
 
 ## Utilisation
 
@@ -18,8 +18,8 @@ partout où il y a des séries.
 - **⚙** : nom du semestre, matières, nombre de semaines, date de début.
   Avec la date de début, la semaine en cours est surlignée.
 - **Vacances et jours fériés** (dans ⚙) : une semaine entièrement couverte,
-  du lundi au vendredi, passe en « vacances » à sa place dans le tableau et
-  sort du décompte. Pour un férié isolé, **Maj + clic** sur la case
+  du lundi au vendredi, devient une bande continue sur toutes les matières,
+  à sa place dans le tableau, et sort du décompte. Pour un férié isolé, **Maj + clic** sur la case
   concernée marque cette seule série comme sautée.
 - **+ nouveau semestre** reprend les matières du semestre affiché ; les
   semestres passés restent accessibles dans le menu déroulant.

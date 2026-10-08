@@ -15,6 +15,7 @@
 <script>
   /* Appliqué avant l'affichage pour éviter un flash du mauvais thème. */
   try { const t = localStorage.getItem("tracker-series-theme"); if (t) document.documentElement.dataset.theme = t; } catch (e) {}
+  try { const v = localStorage.getItem("tracker-series-vac"); if (v) document.documentElement.dataset.vac = v; } catch (e) {}
 </script>
 <!--
   Tracker de Séries — suivi des séries d'exercices, semaine par semaine et
@@ -44,8 +45,10 @@
     --s3: #5a9c69;      /* fait : vert */
     --today: #ecdfb9;
     --now-line: #d27a5f; /* trait sous la semaine en cours : rouge orangé adouci */
-    --off: #dbe6d8;      /* semaine sautée : vert sauge pâle… */
-    --dot: #b4c3b0;      /* …semé d'une trame de points discrète */
+    /* Semaines de vacances, deux styles au choix (réglages) : */
+    --off: #c8c4bc;      /* gris chaud moyen, un cran sous « à venir » */
+    --sage: #dbe6d8;     /* ou vert sauge pâle… */
+    --dot: #b4c3b0;      /* …semé d'une trame de points */
   }
   /* Thème sombre : suit le système en mode « auto », sauf si un thème est
      forcé via data-theme sur <html> (choisi dans l'en-tête). */
@@ -54,14 +57,14 @@
       --bg: #1b1d21; --card: #24272c; --fg: #dfe1e4; --muted: #8d9199;
       --line: #363a41; --hover: #2c3036; --accent: #6f9bd0;
       --s0: #31353b; --s1: #4a77a6; --s2: #3f6449; --s3: #6aad78;
-      --today: #3d3626; --now-line: #c98468; --off: #2b362f; --dot: #46554b;
+      --today: #3d3626; --now-line: #c98468; --off: #4a4e55; --sage: #2b362f; --dot: #46554b;
     }
   }
   :root[data-theme="dark"] {
     --bg: #1b1d21; --card: #24272c; --fg: #dfe1e4; --muted: #8d9199;
     --line: #363a41; --hover: #2c3036; --accent: #6f9bd0;
     --s0: #31353b; --s1: #4a77a6; --s2: #3f6449; --s3: #6aad78;
-    --today: #3d3626; --now-line: #c98468; --off: #2b362f; --dot: #46554b;
+    --today: #3d3626; --now-line: #c98468; --off: #4a4e55; --sage: #2b362f; --dot: #46554b;
   }
   main { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; }
   select option { background: var(--bg); color: var(--fg); }
@@ -98,14 +101,16 @@
   td[data-s="2"] { background: var(--s2); }
   td[data-s="3"] { background: var(--s3); }
   /* Ce qui n'a pas lieu d'être fait (semaine de vacances, série sautée pour
-     un jour férié) : un vert sauge pâle tramé de petits points. Plus calme
-     que des rayures, et on le distingue d'un coup d'œil des aplats d'état. */
-  td.off, td[data-s="skip"] {
-    /* « space » ne pose que des motifs entiers et répartit le reste en
-       interligne égal : aucun point n'est jamais coupé au bord, quelle que
-       soit la taille de la case. */
-    background: radial-gradient(circle, var(--dot) 0 1.1px, transparent 1.6px) center / 7px 7px space, var(--off);
+     un jour férié). Par défaut, un aplat de gris nettement plus marqué que
+     le gris « à venir » ; avec data-vac="dots" sur <html>, un vert sauge
+     tramé de points. « space » ne pose que des points entiers et répartit
+     le reste en interligne égal : aucun n'est coupé au bord. */
+  td.off, td[data-s="skip"] { background: var(--off); }
+  :root[data-vac="dots"] td.off, :root[data-vac="dots"] td[data-s="skip"] {
+    background: radial-gradient(circle, var(--dot) 0 1.1px, transparent 1.6px) center / 7px 7px space, var(--sage);
   }
+  .leg-off { --c: var(--off); }
+  :root[data-vac="dots"] .leg-off { --c: radial-gradient(circle, var(--dot) 0 0.8px, transparent 1.2px) center / 4px 4px space, var(--sage); }
   td.off { height: 26px; }
   tr.break td.week { font-style: italic; }
 
@@ -160,7 +165,7 @@
   <span style="--c: var(--s1)">en cours</span>
   <span style="--c: var(--s2)">à corriger</span>
   <span style="--c: var(--s3)">fait</span>
-  <span style="--c: radial-gradient(circle, var(--dot) 0 0.8px, transparent 1.2px) center / 4px 4px space, var(--off)">vacances</span>
+  <span class="leg-off">vacances</span>
 </div>
 </main>
 
@@ -185,6 +190,12 @@
   <div class="hint">Une semaine entièrement couverte (lundi → vendredi) est sautée : toute sa ligne passe en « vacances ». Pour un jour férié isolé, sautez la seule série concernée par <b>Maj + clic</b>.</div>
   <div id="holidays"></div>
   <button id="addHoliday">+ période</button>
+  <label>Style des vacances
+    <select id="vacStyle">
+      <option value="">Gris</option>
+      <option value="dots">Vert pointillé</option>
+    </select>
+  </label>
   <div style="font-size:13px;margin-top:8px">Matières</div>
   <div id="subjects"></div>
   <button id="addSubject">+ matière</button>
@@ -321,13 +332,17 @@ function renderGrid() {
   html += "</tr>";
 
   for (let w = 1; w <= s.weeks; w++) {
-    // Une semaine de vacances garde son numéro et sa place ; ses cases, non
-    // cliquables, ne portent aucun état (celui déjà saisi est conservé).
     html += `<tr class="${w === now ? "now" : ""} ${off.has(w) ? "break" : ""}"><td class="week">${w}</td>`;
-    for (const sub of s.subjects) {
-      const k = sub.id + ":" + w;
-      html += off.has(w) ? `<td class="off"></td>`
-                         : `<td class="cell" data-k="${k}" data-s="${s.cells[k] || 0}"></td>`;
+    if (off.has(w)) {
+      // Une semaine de vacances est une seule bande sur toutes les matières :
+      // elle coupe le temps, pas une série en particulier. Les états déjà
+      // saisis pour cette semaine sont conservés, simplement masqués.
+      html += `<td class="off" colspan="${s.subjects.length}"></td>`;
+    } else {
+      for (const sub of s.subjects) {
+        const k = sub.id + ":" + w;
+        html += `<td class="cell" data-k="${k}" data-s="${s.cells[k] || 0}"></td>`;
+      }
     }
     html += "</tr>";
     if (w === now) html += `<tr class="nowline"><td colspan="${s.subjects.length + 1}"></td></tr>`;
@@ -470,6 +485,17 @@ $("theme").addEventListener("change", e => {
   if (t) document.documentElement.dataset.theme = t;
   else delete document.documentElement.dataset.theme;
   try { t ? localStorage.setItem(THEME_KEY, t) : localStorage.removeItem(THEME_KEY); } catch (err) {}
+});
+
+/* Style des vacances : même principe que le thème, une préférence
+   d'affichage posée sur <html> et gardée hors de l'export. */
+const VAC_KEY = "tracker-series-vac";
+$("vacStyle").value = document.documentElement.dataset.vac || "";
+$("vacStyle").addEventListener("change", e => {
+  const v = e.target.value;
+  if (v) document.documentElement.dataset.vac = v;
+  else delete document.documentElement.dataset.vac;
+  try { v ? localStorage.setItem(VAC_KEY, v) : localStorage.removeItem(VAC_KEY); } catch (err) {}
 });
 
 function esc(t) {
