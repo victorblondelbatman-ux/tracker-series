@@ -15,11 +15,12 @@ partout où il y a des séries.
 ## Utilisation
 
 - **Clic** sur une case : état suivant. **Clic droit** : état précédent.
-- **⚙** : nom du semestre, matières, nombre de semaines, date de début.
-  Avec la date de début, la semaine en cours est surlignée.
+- **⚙** : nom du semestre, matières, nombre de semaines de cours, date de
+  début. Avec la date de début, la semaine en cours est surlignée.
 - **Vacances et jours fériés** (dans ⚙) : une semaine entièrement couverte,
-  du lundi au vendredi, devient une bande continue sur toutes les matières,
-  à sa place dans le tableau, et sort du décompte. Pour un férié isolé, **Maj + clic** sur la case
+  du lundi au vendredi, s'intercale comme une bande continue sur toutes les
+  matières. Elle ne compte pas parmi les semaines de cours (14 + 1 de
+  vacances = 15 rangées) et la série suivante garde son numéro. Pour un férié isolé, **Maj + clic** sur la case
   concernée marque cette seule série comme sautée.
 - **+ nouveau semestre** reprend les matières du semestre affiché ; les
   semestres passés restent accessibles dans le menu déroulant.

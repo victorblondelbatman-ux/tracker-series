@@ -173,9 +173,9 @@
   <h2>Mode d'emploi</h2>
   <ul>
     <li><b>Clic</b> sur une case : état suivant (à venir → en cours → à corriger → fait). <b>Clic droit</b> : état précédent.</li>
-    <li><b>⚙</b> : renommer le semestre, ajouter ou retirer des matières, changer le nombre de semaines.</li>
+    <li><b>⚙</b> : renommer le semestre, ajouter ou retirer des matières, changer le nombre de semaines de cours.</li>
     <li>Renseigner la <b>date de début</b> (lundi de la semaine 1) surligne la semaine en cours.</li>
-    <li><b>Vacances et jours fériés</b> (dans ⚙) : une semaine entièrement couverte passe en « vacances » et sort du décompte. <b>Maj + clic</b> sur une case : série sautée pour un jour férié.</li>
+    <li><b>Vacances et jours fériés</b> (dans ⚙) : une semaine entièrement couverte s'intercale en « vacances », en plus des semaines de cours ; la série suivante garde son numéro. <b>Maj + clic</b> sur une case : série sautée pour un jour férié.</li>
     <li><b>+ nouveau semestre</b> reprend les matières du semestre affiché ; les anciens restent dans le menu déroulant.</li>
     <li>Tout reste <b>dans ce navigateur</b>, sur cet appareil. Pensez à <b>Exporter</b> de temps en temps : c'est votre sauvegarde, et c'est ainsi qu'on passe d'un appareil à l'autre (<b>Importer</b>).</li>
     <li>Pour l'avoir dans sa propre fenêtre : menu du navigateur → <i>Installer l'application</i> (Chrome, Edge, Brave) ou <i>Partager → Sur l'écran d'accueil</i> (iPhone).</li>
@@ -185,9 +185,9 @@
 <section id="settings">
   <label>Nom du semestre <input id="name"></label>
   <label>Début (lundi de la semaine 1) <input id="start" type="date"></label>
-  <label>Nombre de semaines <input id="weeks" type="number" min="1" max="30" style="width:5em"></label>
+  <label>Semaines de cours <input id="weeks" type="number" min="1" max="30" style="width:5em"></label>
   <div style="font-size:13px;margin-top:8px">Vacances et jours fériés</div>
-  <div class="hint">Une semaine entièrement couverte (lundi → vendredi) est sautée : toute sa ligne passe en « vacances ». Pour un jour férié isolé, sautez la seule série concernée par <b>Maj + clic</b>.</div>
+  <div class="hint">Une semaine entièrement couverte (lundi → vendredi) s'intercale en « vacances », en plus des semaines de cours : la série suivante garde son numéro. Pour un jour férié isolé, sautez la seule série concernée par <b>Maj + clic</b>.</div>
   <div id="holidays"></div>
   <button id="addHoliday">+ période</button>
   <label>Style des vacances
@@ -279,21 +279,33 @@ function holidayAt(s, day) {
   });
 }
 
-/** La semaine w (à partir de 1) est sautée si chacun de ses cinq jours ouvrés
-    est en vacances : un férié isolé ne supprime pas les séries des autres jours. */
-function weekOff(s, w) {
+/** La semaine de calendrier `cal` (à partir de 0) est une semaine de vacances
+    si chacun de ses cinq jours ouvrés l'est : un férié isolé ne supprime pas
+    les séries des autres jours. */
+function weekOff(s, cal) {
   if (!s.start) return false;
-  const monday = addDays(parseDay(s.start), 7 * (w - 1));
+  const monday = addDays(parseDay(s.start), 7 * cal);
   for (let i = 0; i < 5; i++) if (!holidayAt(s, addDays(monday, i))) return false;
   return true;
 }
 
-/** Numéro de la semaine en cours (à partir de 1), ou null sans date de début. */
-function currentWeek(s) {
+/** Rangées du tableau dans l'ordre du calendrier : une par semaine de cours,
+    plus une par semaine de vacances intercalée. Les vacances ne comptent pas
+    parmi les semaines de cours : 14 semaines + 1 de vacances = 15 rangées,
+    et la série qui suit les vacances garde son numéro. */
+function buildRows(s) {
+  const rows = [];
+  for (let cal = 0, n = 1; n <= s.weeks && cal < s.weeks + 52; cal++)
+    rows.push(weekOff(s, cal) ? { cal, off: true } : { cal, n: n++ });
+  return rows;
+}
+
+/** Semaine de calendrier en cours (à partir de 0), ou null sans date de début. */
+function currentCal(s) {
   if (!s.start) return null;
   const t = new Date();
   const days = Math.round((new Date(t.getFullYear(), t.getMonth(), t.getDate()) - parseDay(s.start)) / 86400000);
-  return Math.floor(days / 7) + 1;
+  return Math.floor(days / 7);
 }
 
 function render() {
@@ -311,19 +323,17 @@ function renderSemesterPicker() {
 /** Matières en colonnes, semaines en lignes, comme sur la feuille. */
 function renderGrid() {
   const s = sem();
-  const now = currentWeek(s);
-  const off = new Set();
-  for (let w = 1; w <= s.weeks; w++) if (weekOff(s, w)) off.add(w);
+  const now = currentCal(s);
   let total = 0, done = 0;
 
   let html = "<tr><th class='week'></th>";
   for (const sub of s.subjects) {
-    // Une série sautée (vacances ou jour férié) n'est ni due ni manquée :
-    // elle sort du décompte.
+    // Une série sautée pour un jour férié n'est ni due ni manquée : elle sort
+    // du décompte. Les vacances, elles, ne sont pas des séries du tout.
     let n = 0, due = 0;
     for (let w = 1; w <= s.weeks; w++) {
       const v = s.cells[sub.id + ":" + w];
-      if (off.has(w) || v === SKIP) continue;
+      if (v === SKIP) continue;
       due++; if (v === DONE) n++;
     }
     total += due; done += n;
@@ -331,21 +341,21 @@ function renderGrid() {
   }
   html += "</tr>";
 
-  for (let w = 1; w <= s.weeks; w++) {
-    html += `<tr class="${w === now ? "now" : ""} ${off.has(w) ? "break" : ""}"><td class="week">${w}</td>`;
-    if (off.has(w)) {
+  for (const r of buildRows(s)) {
+    const cls = `${r.cal === now ? "now" : ""} ${r.off ? "break" : ""}`;
+    if (r.off) {
       // Une semaine de vacances est une seule bande sur toutes les matières :
-      // elle coupe le temps, pas une série en particulier. Les états déjà
-      // saisis pour cette semaine sont conservés, simplement masqués.
-      html += `<td class="off" colspan="${s.subjects.length}"></td>`;
+      // elle coupe le temps, pas une série en particulier.
+      html += `<tr class="${cls}"><td class="week">–</td><td class="off" colspan="${s.subjects.length}"></td></tr>`;
     } else {
+      html += `<tr class="${cls}"><td class="week">${r.n}</td>`;
       for (const sub of s.subjects) {
-        const k = sub.id + ":" + w;
+        const k = sub.id + ":" + r.n;
         html += `<td class="cell" data-k="${k}" data-s="${s.cells[k] || 0}"></td>`;
       }
+      html += "</tr>";
     }
-    html += "</tr>";
-    if (w === now) html += `<tr class="nowline"><td colspan="${s.subjects.length + 1}"></td></tr>`;
+    if (r.cal === now) html += `<tr class="nowline"><td colspan="${s.subjects.length + 1}"></td></tr>`;
   }
   $("grid").innerHTML = html;
   $("global").textContent = total ? `${done}/${total} · ${Math.round(100 * done / total)} %` : "";
